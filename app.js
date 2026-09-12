@@ -26,7 +26,7 @@ const groupKey = r => JSON.stringify([r.nameEn.trim().toLowerCase(),r.unit.trim(
 const isNumeric = r => typeof r.value==='number' && Number.isFinite(r.value);
 const state = r => !isNumeric(r)?'qualitative':r.min===null&&r.max===null?'unknown':r.min!==null&&r.value<r.min?'low':r.max!==null&&r.value>r.max?'high':'normal';
 const displayValue = r => isNumeric(r)?number(r.value):r.value;
-const displayRange = r => r.min===null&&r.max===null?'—':r.min===null?'≤ '+number(r.max):r.max===null?'≥ '+number(r.min):number(r.min)+' – '+number(r.max);
+const displayRange = r => r.min===null&&r.max===null?t('notProvided'):r.min===null?'≤ '+number(r.max):r.max===null?'≥ '+number(r.min):number(r.min)+' – '+number(r.max);
 const number = n => new Intl.NumberFormat(lang==='ar'?'ar':'en',{maximumFractionDigits:6}).format(n);
 const dateText = d => new Date(d+'T12:00:00Z').toLocaleDateString(lang==='ar'?'ar':'en-GB',{year:'numeric',month:'short',day:'numeric',timeZone:'UTC'});
 function notice(key,error=false){$('notice').textContent=t(key);$('notice').className='notice'+(error?' error':'');$('notice').hidden=false;}
@@ -43,6 +43,14 @@ function recordError(r){
  return '';
 }
 function validate(r){return !recordError(r);}
+function normalizeNumeric(value){
+ if(typeof value!=='string')return value;
+ const original=value.trim();
+ const decimal=original.replace(/[٠-٩]/g,c=>String(c.charCodeAt(0)-1632)).replace(/[۰-۹]/g,c=>String(c.charCodeAt(0)-1776)).replace(/٫/g,'.').replace(',','.');
+ // Entire value must be numeric. Never turn '<3', 'positive', or '3 mg' into a number.
+ if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(decimal))return original;
+ const numeric=Number(decimal);return Number.isFinite(numeric)?numeric:original;
+}
 function parseBackup(raw){
  let data;try{data=JSON.parse(raw.replace(/^\uFEFF/,''));}catch{throw Error(t('jsonSyntax'));}
  const rows=Array.isArray(data)?data:data&&data.results;
@@ -53,7 +61,7 @@ function parseBackup(raw){
  return rows.map((r,i)=>{
   if(!r||typeof r!=='object')throw Error(t('row')+' '+(i+1)+': record');
   if(typeof r.id==='number'&&!Number.isSafeInteger(r.id))throw Error(t('row')+' '+(i+1)+': id');
-  const n={id:r.id===undefined?'json-row-'+(i+1):typeof r.id==='number'?String(r.id):r.id,nameEn:r.nameEn,nameAr:r.nameAr,date:r.date,value:r.value,unit:r.unit??'',min:r.min??null,max:r.max??null,notes:r.notes??''};
+  const n={id:r.id===undefined?'json-row-'+(i+1):typeof r.id==='number'?String(r.id):r.id,nameEn:r.nameEn,nameAr:r.nameAr,date:r.date,value:normalizeNumeric(r.value),unit:r.unit??'',min:r.min==null?null:normalizeNumeric(r.min),max:r.max==null?null:normalizeNumeric(r.max),notes:r.notes??''};
   const error=recordError(n);if(error)throw Error(t('row')+' '+(i+1)+': '+error);
   if(ids.has(n.id))throw Error(t('row')+' '+(i+1)+': '+t('duplicateId'));
   ids.add(n.id);n.nameEn=n.nameEn.trim();n.nameAr=n.nameAr.trim();n.unit=n.unit.trim();return n;
@@ -64,6 +72,22 @@ function persist(){dirty=true;sourceStatus='local';try{localStorage.setItem(DRAF
 function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function resetForm(){editing=null;form.reset();form.elements.date.value=today();$('cancel').hidden=true;$('form-title').textContent=t('add');}
 function badge(r){const s=state(r);return `<span class="badge ${s}">${t(s)}</span>`;}
+
+Object.assign(TEXT.en,{notProvided:'Not provided in this record',rangeExplanation:'Gray points have no reference limits. Shaded bands appear only where that record includes both limits; missing limits are not copied from another date.',duplicateExplanation:'Repeated test/date/value entries exist in this view. They are kept as separate records; check your JSON before deleting duplicates.'});
+Object.assign(TEXT.ar,{notProvided:'غير محدد في هذه النتيجة',rangeExplanation:'النقاط الرمادية بلا حدود مرجعية. تظهر المساحة المظللة فقط عندما تتضمن النتيجة حدّين؛ لا تُنسخ الحدود المفقودة من تاريخ آخر.',duplicateExplanation:'توجد نتائج مكررة بالتحليل والتاريخ والقيمة نفسها في هذا العرض. تبقى كسجلات منفصلة؛ تحقق من JSON قبل حذف التكرارات.'});
+function dateAxis(first,last,L,R,W,H){
+ const count=first===last?0:Math.max(1,Math.floor((W-L-R)/155));
+ let labels='';
+ for(let i=0;i<=count;i++){
+  const stamp=count?first+(last-first)*i/count:first;
+  const date=new Date(stamp).toISOString().slice(0,10);
+  const xx=count?L+(W-L-R)*i/count:(L+W-R)/2;
+  const anchor=!count?'middle':i===0?'start':i===count?'end':'middle';
+  labels+=`<text data-date-tick="true" x="${xx}" y="${H-22}" text-anchor="${anchor}" font-size="12" fill="#627679">${esc(dateText(date))}</text>`;
+ }
+ return labels;
+}
+
 function render(){
  $('range-legend').hidden=selected==='all';
  $('data-status').textContent=t(sourceStatus);$('reload-json').textContent=t('reload');$('reload-json').disabled=busy;$('restore-draft').textContent=t('restore');$('restore-draft').hidden=!hasDraft;$('restore-draft').disabled=busy;
@@ -71,8 +95,10 @@ function render(){
  document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';
  document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));
  $('language').textContent=lang==='en'?'العربية':'English';$('language').lang=lang==='en'?'ar':'en';$('form-title').textContent=t(editing?'editTitle':'add');
- const groups=new Map();records.forEach(r=>{const k=groupKey(r);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);});
+ let groups=new Map();records.forEach(r=>{const k=groupKey(r);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);});
  groups.forEach(list=>list.sort((a,b)=>a.date.localeCompare(b.date)));
+ const collator=new Intl.Collator(lang,{numeric:true,sensitivity:'base'});
+ groups=new Map([...groups].sort(([,a],[,b])=>collator.compare(lang==='ar'?a.at(-1).nameAr:a.at(-1).nameEn,lang==='ar'?b.at(-1).nameAr:b.at(-1).nameEn)||collator.compare(a[0].unit,b[0].unit)));
  if(selected!=='all'&&!groups.has(selected))selected='all';
  $('test-select').replaceChildren();
  $('test-select').add(new Option(t('allTests'),'all'));
@@ -81,8 +107,12 @@ function render(){
  $('test-select').value=selected;$('test-select').disabled=!groups.size;
  $('total').textContent=number(records.length);$('tests').textContent=number(groups.size);$('outside').textContent=number([...groups.values()].filter(a=>['high','low'].includes(state(a[a.length-1]))).length);
  const list=selected==='all'?[...records].sort((a,b)=>a.date.localeCompare(b.date)):groups.get(selected)||[];
+ const signatures=new Set();let repeated=false;
+ list.forEach(r=>{const key=JSON.stringify([groupKey(r),r.date,r.value]);if(signatures.has(key))repeated=true;signatures.add(key);});
+ $('record-info').textContent=[selected!=='all'&&list.some(r=>isNumeric(r)&&(r.min===null||r.max===null))?t('rangeExplanation'):'',repeated?t('duplicateExplanation'):''].filter(Boolean).join(' ');
+ $('record-info').hidden=!$('record-info').textContent;
  if(selected==='all')renderMultiple(groups);else{ $('series-legend').innerHTML='';renderChart(list);}
- $('history').innerHTML=list.length?[...list].reverse().map(r=>`<tr><td>${esc(lang==='ar'?r.nameAr:r.nameEn)}</td><td>${esc(dateText(r.date))}</td><td><bdi>${esc(displayValue(r))} ${esc(r.unit)}</bdi></td><td><bdi>${esc(displayRange(r))} ${esc(r.unit)}</bdi></td><td>${badge(r)}</td><td>${esc(r.notes)||'—'}</td><td><button data-action="edit" data-id="${esc(r.id)}">${t('edit')}</button><button data-action="delete" data-id="${esc(r.id)}">${t('remove')}</button></td></tr>`).join(''):`<tr><td colspan="7">${t('noHistory')}</td></tr>`;
+ $('history').innerHTML=list.length?[...list].reverse().map(r=>`<tr><td>${esc(lang==='ar'?r.nameAr:r.nameEn)}</td><td>${esc(dateText(r.date))}</td><td><bdi>${esc(displayValue(r))} ${esc(r.unit)}</bdi></td><td><bdi>${esc(displayRange(r))}${r.min===null&&r.max===null?'':' '+esc(r.unit)}</bdi></td><td>${badge(r)}</td><td>${esc(r.notes)||'—'}</td><td><button data-action="edit" data-id="${esc(r.id)}">${t('edit')}</button><button data-action="delete" data-id="${esc(r.id)}">${t('remove')}</button></td></tr>`).join(''):`<tr><td colspan="7">${t('noHistory')}</td></tr>`;
 }
 function renderMultiple(groups){
  groups=new Map([...groups].map(([k,list])=>[k,list.filter(isNumeric)]).filter(([,list])=>list.length));
@@ -104,8 +134,7 @@ function renderMultiple(groups){
   const yy=y(top*i/5),xx=L+(W-L-R)*i/5;
   svg+=`<line x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}" stroke="#d9dfe3"/><line x1="${xx}" y1="${T}" x2="${xx}" y2="${H-B}" stroke="#d9dfe3"/><text x="${L-9}" y="${yy+4}" text-anchor="end" font-size="13" fill="#627679">${esc(number(top*i/5))}${mixed?'%':''}</text>`;
  }
- const dates=[...new Set(ordered.map(r=>r.date))];const ticks=[...new Set([dates[0],dates[Math.floor((dates.length-1)/2)],dates.at(-1)])];
- ticks.forEach((date,i)=>{svg+=`<text x="${x({date})}" y="${H-25}" text-anchor="${ticks.length===1?'middle':i===0?'start':i===ticks.length-1?'end':'middle'}" font-size="13" fill="#627679">${esc(dateText(date))}</text>`;});
+ svg+=dateAxis(first,last,L,R,W,H);
  let legend='',index=0;
  groups.forEach(list=>{
   const color=colors[index%colors.length],dash=index>=colors.length?' stroke-dasharray="7 4"':'';index++;
@@ -141,12 +170,13 @@ function renderChart(list){
  list.forEach((r,i)=>{if(r.min===null||r.max===null)return;const xx=x(r),left=i?(x(list[i-1])+xx)/2:L,right=i<list.length-1?(xx+x(list[i+1]))/2:W-R;svg+=`<rect x="${left}" y="${y(r.max)}" width="${Math.max(1,right-left)}" height="${Math.max(1,y(r.min)-y(r.max))}" fill="#e2f4ed" fill-opacity="0.7"/><line x1="${left}" x2="${right}" y1="${y(r.min)}" y2="${y(r.min)}" stroke="#a5d4c1" stroke-dasharray="4 4"/><line x1="${left}" x2="${right}" y1="${y(r.max)}" y2="${y(r.max)}" stroke="#a5d4c1" stroke-dasharray="4 4"/>`;});
  svg+=`<polyline points="${list.map(r=>`${x(r)},${y(r.value)}`).join(' ')}" fill="none" stroke="#0b6c65" stroke-width="2.5" stroke-linejoin="round"/>`;
  list.forEach((r,i)=>{svg+=`<circle cx="${x(r)}" cy="${y(r.value)}" r="5" stroke="white" stroke-width="2" fill="${{normal:'#17846b',high:'#ca7039',low:'#577dd3',unknown:'#64748b'}[state(r)]}"><title>${esc(dateText(r.date))}: ${esc(number(r.value))} ${esc(r.unit)} — ${t(state(r))}</title></circle>`;
- if((i===0||i===list.length-1||i%Math.max(1,Math.ceil(list.length/4))===0)&&(!i||r.date!==list[i-1].date))svg+=`<text x="${x(r)}" y="${H-22}" text-anchor="${i===0?'start':i===list.length-1?'end':'middle'}" font-size="12" fill="#627679">${esc(dateText(r.date))}</text>`;});
+ });
+ svg+=dateAxis(firstTime,lastTime,L,R,W,H);
  $('chart').innerHTML=svg+'</svg>';
 }
 form.addEventListener('submit',e=>{
  e.preventDefault();if(busy)return;if(!editing&&records.length>=10000){notice('limit',true);return;}
- const f=new FormData(form),r={id:editing||globalThis.crypto?.randomUUID?.()||`r-${Date.now()}-${Math.random().toString(36).slice(2)}`,nameEn:f.get('nameEn').trim(),nameAr:f.get('nameAr').trim(),date:f.get('date'),value:f.get('value').trim()!==''&&Number.isFinite(Number(f.get('value')))?Number(f.get('value')):f.get('value').trim(),unit:f.get('unit').trim(),min:f.get('min').trim()===''?null:Number(f.get('min')),max:f.get('max').trim()===''?null:Number(f.get('max')),notes:f.get('notes').trim()};
+ const f=new FormData(form),r={id:editing||globalThis.crypto?.randomUUID?.()||`r-${Date.now()}-${Math.random().toString(36).slice(2)}`,nameEn:f.get('nameEn').trim(),nameAr:f.get('nameAr').trim(),date:f.get('date'),value:normalizeNumeric(f.get('value')),unit:f.get('unit').trim(),min:f.get('min').trim()===''?null:normalizeNumeric(f.get('min')),max:f.get('max').trim()===''?null:normalizeNumeric(f.get('max')),notes:f.get('notes').trim()};
  if(r.min!==null&&r.max!==null&&r.min>r.max){notice('badRange',true);return;}if(!validate(r)){notice('badInput',true);return;}
  if(editing)records=records.map(old=>old.id===editing?r:old);else records.push(r);
  const ok=persist();resetForm();render();if(ok)notice('saved');

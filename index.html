@@ -23,13 +23,13 @@
         <label><span data-i18n="nameAr">Test name in Arabic</span><input name="nameAr" maxlength="100" required placeholder="مثال: الهيموغلوبين" dir="rtl"></label>
         <label><span data-i18n="date">Test date</span><input name="date" type="date" required></label>
         <div class="two"><label><span data-i18n="value">Result</span><input name="value" type="text" required placeholder="0.0"></label><label><span data-i18n="unit">Unit</span><input name="unit" maxlength="40" placeholder="g/dL" dir="ltr"></label></div>
-        <div class="range-label" data-i18n="range">Lab reference range</div><div class="two"><label><span data-i18n="min">Lower limit</span><input name="min" type="number" min="0" step="any" placeholder="—"></label><label><span data-i18n="max">Upper limit</span><input name="max" type="number" min="0" step="any" placeholder="—"></label></div>
+        <div class="range-label" data-i18n="range">Lab reference range</div><div class="two"><label><span data-i18n="min">Lower limit</span><input name="min" type="text" inputmode="decimal" placeholder="—"></label><label><span data-i18n="max">Upper limit</span><input name="max" type="text" inputmode="decimal" placeholder="—"></label></div>
         <label><span data-i18n="notes">Notes (optional)</span><textarea name="notes" rows="2" maxlength="1000"></textarea></label>
         <button class="primary" id="save" data-i18n="save">Save result</button><button type="button" id="cancel" data-i18n="cancel" hidden>Cancel editing</button>
       </form>
     </section>
     <section class="panel chart-panel"><div class="chart-heading"><div><div class="eyebrow" data-i18n="trend">RESULT TREND</div><h2 data-i18n="chartTitle">The bigger picture</h2></div><label class="selector"><span class="sr-only" data-i18n="select">Select a test</span><select id="test-select"></select></label></div>
-      <div id="chart-summary"></div><div id="chart" class="chart"></div>
+      <p id="record-info" class="hint" hidden></p><div id="chart-summary"></div><div id="chart" class="chart"></div>
       <div id="series-legend" class="legend"></div><div id="range-legend" class="legend"><span><i class="in"></i><span data-i18n="normal">Within range</span></span><span><i class="high"></i><span data-i18n="high">High</span></span><span><i class="low"></i><span data-i18n="low">Low</span></span><span><i class="band"></i><span data-i18n="range">Lab reference range</span></span></div>
       <p class="hint" data-i18n="chartHint">Each point uses its own lab range. Direction shows a numerical change, not whether your health improved.</p>
     </section>
@@ -38,4 +38,5 @@
   <footer><p data-i18n="privacy">Stored in this browser. Export JSON regularly to back up your results or move them to another device.</p><p data-i18n="medical">Range labels are comparisons with your lab report, not diagnoses. Discuss results with your healthcare professional.</p></footer>
 </main>
 </body></html>
+
 

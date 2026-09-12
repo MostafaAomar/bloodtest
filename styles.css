@@ -2,6 +2,4 @@
 :root .data-source{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:22px;font-size:14px;color:var(--muted)}
 
 .badge.qualitative,.badge.unknown{background:#edf1f5;color:#475569}.chart{overflow-x:auto}.chart svg{min-width:540px}#series-legend{max-height:180px;overflow:auto}
-
 .workspace>.panel{min-width:0}.chart{max-width:100%}.chart svg{flex-shrink:0}.selector{min-width:0}#chart-summary small{overflow-wrap:anywhere}
-
