@@ -88,6 +88,9 @@ function dateAxis(first,last,L,R,W,H){
  return labels;
 }
 
+Object.assign(TEXT.en,{searchLabel:'Search results',searchPlaceholder:'Test name, date, value or notes',clearSearch:'Clear',matches:'matching results',noMatches:'No matching results. Try another search.',empty:'No results to display. Add a result or change your search.'});
+Object.assign(TEXT.ar,{searchLabel:'البحث في النتائج',searchPlaceholder:'اسم التحليل أو التاريخ أو القيمة أو الملاحظات',clearSearch:'مسح',matches:'نتيجة مطابقة',noMatches:'لا توجد نتائج مطابقة. جرّب بحثاً آخر.',empty:'لا توجد نتائج للعرض. أضف نتيجة أو غيّر البحث.'});
+const searchText = text => String(text).normalize('NFKD').replace(/[\u0300-\u036f\u064b-\u065f\u0670]/g,'').toLocaleLowerCase().replace(/[أإآ]/g,'ا').trim();
 function render(){
  $('range-legend').hidden=selected==='all';
  $('data-status').textContent=t(sourceStatus);$('reload-json').textContent=t('reload');$('reload-json').disabled=busy;$('restore-draft').textContent=t('restore');$('restore-draft').hidden=!hasDraft;$('restore-draft').disabled=busy;
@@ -95,7 +98,11 @@ function render(){
  document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';
  document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));
  $('language').textContent=lang==='en'?'العربية':'English';$('language').lang=lang==='en'?'ar':'en';$('form-title').textContent=t(editing?'editTitle':'add');
- let groups=new Map();records.forEach(r=>{const k=groupKey(r);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);});
+ $('result-search').placeholder=t('searchPlaceholder');
+ const query=searchText($('result-search').value);
+ const matchingRecords=records.filter(r=>!query||searchText([r.nameEn,r.nameAr,r.date,r.value,r.unit,r.notes].join(' ')).includes(query));
+ $('clear-search').disabled=!query;$('search-count').textContent=query?number(matchingRecords.length)+' '+t('matches'):'';
+ let groups=new Map();matchingRecords.forEach(r=>{const k=groupKey(r);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);});
  groups.forEach(list=>list.sort((a,b)=>a.date.localeCompare(b.date)));
  const collator=new Intl.Collator(lang,{numeric:true,sensitivity:'base'});
  groups=new Map([...groups].sort(([,a],[,b])=>collator.compare(lang==='ar'?a.at(-1).nameAr:a.at(-1).nameEn,lang==='ar'?b.at(-1).nameAr:b.at(-1).nameEn)||collator.compare(a[0].unit,b[0].unit)));
@@ -105,22 +112,23 @@ function render(){
  if(!groups.size)$('test-select').add(new Option(t('noTests'),''));
  groups.forEach((list,key)=>{const r=list[list.length-1];$('test-select').add(new Option(`${lang==='ar'?r.nameAr:r.nameEn} · ${r.unit}`,key));});
  $('test-select').value=selected;$('test-select').disabled=!groups.size;
- $('total').textContent=number(records.length);$('tests').textContent=number(groups.size);$('outside').textContent=number([...groups.values()].filter(a=>['high','low'].includes(state(a[a.length-1]))).length);
- const list=selected==='all'?[...records].sort((a,b)=>a.date.localeCompare(b.date)):groups.get(selected)||[];
+ $('total').textContent=number(records.length);$('tests').textContent=number(new Set(records.map(groupKey)).size);$('outside').textContent=number([...records.reduce((map,r)=>{const key=groupKey(r),old=map.get(key);if(!old||r.date>=old.date)map.set(key,r);return map;},new Map()).values()].filter(r=>['high','low'].includes(state(r))).length);
+ const list=selected==='all'?[...matchingRecords].sort((a,b)=>a.date.localeCompare(b.date)):groups.get(selected)||[];
  const signatures=new Set();let repeated=false;
  list.forEach(r=>{const key=JSON.stringify([groupKey(r),r.date,r.value]);if(signatures.has(key))repeated=true;signatures.add(key);});
  $('record-info').textContent=[selected!=='all'&&list.some(r=>isNumeric(r)&&(r.min===null||r.max===null))?t('rangeExplanation'):'',repeated?t('duplicateExplanation'):''].filter(Boolean).join(' ');
  $('record-info').hidden=!$('record-info').textContent;
  if(selected==='all')renderMultiple(groups);else{ $('series-legend').innerHTML='';renderChart(list);}
- $('history').innerHTML=list.length?[...list].reverse().map(r=>`<tr><td>${esc(lang==='ar'?r.nameAr:r.nameEn)}</td><td>${esc(dateText(r.date))}</td><td><bdi>${esc(displayValue(r))} ${esc(r.unit)}</bdi></td><td><bdi>${esc(displayRange(r))}${r.min===null&&r.max===null?'':' '+esc(r.unit)}</bdi></td><td>${badge(r)}</td><td>${esc(r.notes)||'—'}</td><td><button data-action="edit" data-id="${esc(r.id)}">${t('edit')}</button><button data-action="delete" data-id="${esc(r.id)}">${t('remove')}</button></td></tr>`).join(''):`<tr><td colspan="7">${t('noHistory')}</td></tr>`;
+ $('history').innerHTML=list.length?[...list].reverse().map(r=>`<tr><td data-label="${esc(t('testName'))}">${esc(lang==='ar'?r.nameAr:r.nameEn)}</td><td data-label="${esc(t('date'))}">${esc(dateText(r.date))}</td><td data-label="${esc(t('value'))}"><bdi>${esc(displayValue(r))} ${esc(r.unit)}</bdi></td><td data-label="${esc(t('range'))}"><bdi>${esc(displayRange(r))}${r.min===null&&r.max===null?'':' '+esc(r.unit)}</bdi></td><td data-label="${esc(t('status'))}">${badge(r)}</td><td data-label="${esc(t('note'))}">${esc(r.notes)||'—'}</td><td data-label="${esc(t('actions'))}"><button data-action="edit" data-id="${esc(r.id)}">${t('edit')}</button><button data-action="delete" data-id="${esc(r.id)}">${t('remove')}</button></td></tr>`).join(''):`<tr><td colspan="7">${query?t('noMatches'):t('noHistory')}</td></tr>`;
 }
 function renderMultiple(groups){
+ const records=[...groups.values()].flat();
  groups=new Map([...groups].map(([k,list])=>[k,list.filter(isNumeric)]).filter(([,list])=>list.length));
  if(!groups.size){$('series-legend').innerHTML='';$('chart-summary').textContent=t('textOnly');$('chart').innerHTML='<div class="empty">'+t('textOnly')+'</div>';return;}
  if(!records.length){$('series-legend').innerHTML='';renderChart([]);return;}
  const colors=['#1554ed','#d52935','#16852b','#a34ac7','#b76400','#087e91'];
  const mixed=new Set(records.filter(isNumeric).map(r=>r.unit)).size>1;
- const W=760,H=350,L=75,R=28,T=30,B=60;
+ const W=Math.max(240,Math.round($('chart').clientWidth||760)),H=W<500?300:350,L=W<500?48:75,R=14,T=30,B=60;
  const ordered=records.filter(isNumeric).sort((a,b)=>a.date.localeCompare(b.date));
  const first=Date.parse(ordered[0].date),last=Date.parse(ordered.at(-1).date);
  const value=r=>mixed?(r.max>0?r.value/r.max*100:null):r.value;
@@ -159,7 +167,7 @@ function renderChart(list){
  if(!list.length){$('chart-summary').replaceChildren();$('chart').innerHTML=`<div class="empty"><span class="empty-symbol" aria-hidden="true">∿</span>${t('empty')}</div>`;return;}
  const last=list[list.length-1],prev=list[list.length-2],diff=prev?last.value-prev.value:0;
  $('chart-summary').innerHTML=`<strong>${esc(number(last.value))}</strong><small>${esc(last.unit)}</small>${badge(last)}<small>${prev?`${diff>0?'↑':diff<0?'↓':'='} ${esc(number(Math.abs(diff)))} · ${t(diff>0?'up':diff<0?'down':'same')}`:t('first')}</small>`;
- const W=720,H=305,L=68,R=24,T=24,B=54;
+ const W=Math.max(240,Math.round($('chart').clientWidth||720)),H=305,L=W<500?48:68,R=14,T=24,B=54;
  const values=list.flatMap(r=>[r.value,r.min,r.max]).filter(v=>v!==null);let lo=Infinity,hi=-Infinity;values.forEach(v=>{lo=Math.min(lo,v);hi=Math.max(hi,v);});const pad=(hi-lo||Math.max(hi,1))*.16;lo=Math.max(0,lo-pad);hi+=pad;
  const firstTime=Date.parse(list[0].date),lastTime=Date.parse(last.date),span=lastTime-firstTime;
  const x=r=>span?L+(Date.parse(r.date)-firstTime)/span*(W-L-R):(L+W-R)/2;
@@ -183,6 +191,10 @@ form.addEventListener('submit',e=>{
 });
 $('cancel').addEventListener('click',resetForm);
 $('language').addEventListener('click',()=>{lang=lang==='en'?'ar':'en';try{localStorage.setItem('blood-notes-language',lang);}catch{}$('notice').hidden=true;render();if(storageFailed)notice('storage',true);});
+$('result-search').addEventListener('input',()=>{selected='all';render();});
+$('clear-search').addEventListener('click',()=>{$('result-search').value='';selected='all';render();$('result-search').focus();});
+let resizeFrame;
+window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(render);});
 $('test-select').addEventListener('change',e=>{selected=e.target.value;render();});
 $('history').addEventListener('click',e=>{if(busy)return;const button=e.target.closest('button[data-action]');if(!button)return;const r=records.find(r=>r.id===button.dataset.id);if(!r)return;
  if(button.dataset.action==='edit'){editing=r.id;for(const key of ['nameEn','nameAr','date','value','unit','min','max','notes'])form.elements[key].value=r[key]??'';$('cancel').hidden=false;$('form-title').textContent=t('editTitle');form.elements.nameEn.focus();}

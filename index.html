@@ -17,7 +17,17 @@
   <div id="notice" class="notice" role="status" hidden></div>
   <section class="stats" aria-label="Summary"><div><span data-i18n="total">Saved results</span><strong id="total">0</strong></div><div><span data-i18n="tests">Tracked tests</span><strong id="tests">0</strong></div><div><span data-i18n="outside">Latest results outside range</span><strong id="outside">0</strong></div></section>
   <div class="workspace">
-    <section class="panel entry"><div class="panel-heading"><span class="step">+</span><h2 id="form-title" data-i18n="add">Add a result</h2></div><p class="hint" data-i18n="labHint">Use the units and reference range printed on your lab report.</p>
+    <section class="panel chart-panel"><div class="chart-heading"><div><div class="eyebrow" data-i18n="trend">RESULT TREND</div><h2 data-i18n="chartTitle">The bigger picture</h2></div><label class="selector"><span class="sr-only" data-i18n="select">Select a test</span><select id="test-select"></select></label></div>
+      <div class="search-row"><label for="result-search"><span data-i18n="searchLabel">Search results</span><input id="result-search" type="search" autocomplete="off" placeholder="Test name, date or notes"></label><button id="clear-search" type="button" data-i18n="clearSearch">Clear</button></div><p id="search-count" class="hint" role="status" aria-live="polite"></p><p id="record-info" class="hint" hidden></p><div id="chart-summary"></div><div id="chart" class="chart"></div>
+      <div id="series-legend" class="legend"></div><div id="range-legend" class="legend"><span><i class="in"></i><span data-i18n="normal">Within range</span></span><span><i class="high"></i><span data-i18n="high">High</span></span><span><i class="low"></i><span data-i18n="low">Low</span></span><span><i class="band"></i><span data-i18n="range">Lab reference range</span></span></div>
+      <p class="hint" data-i18n="chartHint">Each point uses its own lab range. Direction shows a numerical change, not whether your health improved.</p>
+    </section>
+    
+
+ 
+  <section class="panel history"><div class="history-heading"><h2 data-i18n="history">Result history</h2><span class="hint" data-i18n="selectedHistory">For the selected test</span></div><div class="table-wrap"><table><thead><tr><th data-i18n="testName">Test</th><th data-i18n="date">Test date</th><th data-i18n="value">Result</th><th data-i18n="range">Lab reference range</th><th data-i18n="status">Status</th><th data-i18n="note">Notes</th><th data-i18n="actions">Actions</th></tr></thead><tbody id="history"></tbody></table></div></section>
+  </div>
+ <section class="panel entry"><div class="panel-heading"><span class="step">+</span><h2 id="form-title" data-i18n="add">Add a result</h2></div><p class="hint" data-i18n="labHint">Use the units and reference range printed on your lab report.</p>
       <form id="result-form">
         <label><span data-i18n="nameEn">Test name in English</span><input name="nameEn" maxlength="100" required placeholder="e.g. Hemoglobin" dir="ltr"></label>
         <label><span data-i18n="nameAr">Test name in Arabic</span><input name="nameAr" maxlength="100" required placeholder="مثال: الهيموغلوبين" dir="rtl"></label>
@@ -28,13 +38,6 @@
         <button class="primary" id="save" data-i18n="save">Save result</button><button type="button" id="cancel" data-i18n="cancel" hidden>Cancel editing</button>
       </form>
     </section>
-    <section class="panel chart-panel"><div class="chart-heading"><div><div class="eyebrow" data-i18n="trend">RESULT TREND</div><h2 data-i18n="chartTitle">The bigger picture</h2></div><label class="selector"><span class="sr-only" data-i18n="select">Select a test</span><select id="test-select"></select></label></div>
-      <p id="record-info" class="hint" hidden></p><div id="chart-summary"></div><div id="chart" class="chart"></div>
-      <div id="series-legend" class="legend"></div><div id="range-legend" class="legend"><span><i class="in"></i><span data-i18n="normal">Within range</span></span><span><i class="high"></i><span data-i18n="high">High</span></span><span><i class="low"></i><span data-i18n="low">Low</span></span><span><i class="band"></i><span data-i18n="range">Lab reference range</span></span></div>
-      <p class="hint" data-i18n="chartHint">Each point uses its own lab range. Direction shows a numerical change, not whether your health improved.</p>
-    </section>
-  </div>
-  <section class="panel history"><div class="history-heading"><h2 data-i18n="history">Result history</h2><span class="hint" data-i18n="selectedHistory">For the selected test</span></div><div class="table-wrap"><table><thead><tr><th data-i18n="testName">Test</th><th data-i18n="date">Test date</th><th data-i18n="value">Result</th><th data-i18n="range">Lab reference range</th><th data-i18n="status">Status</th><th data-i18n="note">Notes</th><th data-i18n="actions">Actions</th></tr></thead><tbody id="history"></tbody></table></div></section>
   <footer><p data-i18n="privacy">Stored in this browser. Export JSON regularly to back up your results or move them to another device.</p><p data-i18n="medical">Range labels are comparisons with your lab report, not diagnoses. Discuss results with your healthcare professional.</p></footer>
 </main>
 </body></html>
